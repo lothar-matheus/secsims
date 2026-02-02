@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecCity - Cyber Security Manager</title>
+    <style>
+        /* ==============================================
+           VARIÁVEIS CSS GLOBAIS
+        ============================================== */
+        :root {
+            --bg-color: #1a1a2e;
+            --grid-color: #16213e;
+            --grass: #27ae60;
+            --text: #e94560;
+        }
+
+        /* ==============================================
+           ESTILOS BÁSICOS
+        ============================================== */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        header {
+            text-align: center;
+            padding: 20px;
+        }
+
+        /* ==============================================
+           PAINEL DE INTERFACE (UI)
+        ============================================== */
+        #ui-panel {
+            display: flex;
+            gap: 20px;
+            background: var(--grid-color);
+            padding: 15px 30px;
+            border-radius: 10px;
+            border: 2px solid var(--text);
+            margin-bottom: 20px;
+            box-shadow: 0 0 15px rgba(233, 69, 96, 0.3);
+        }
+
+        .stat { 
+            font-size: 1.2rem; 
+            font-weight: bold; 
+        }
+        
+        .stat span { 
+            color: var(--text); 
+        }
+
+        /* ==============================================
+           CONTAINER DO JOGO
+        ============================================== */
+        #game-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        /* ==============================================
+           GRID DA CIDADE (8x8)
+        ============================================== */
+        #city-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 60px);
+            grid-template-rows: repeat(8, 60px);
+            gap: 4px;
+            background: #0f3460;
+            padding: 10px;
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .cell {
+            width: 60px;
+            height: 60px;
+            background-color: var(--grass);
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            transition: transform 0.1s;
+            position: relative;
+        }
+
+        .cell:hover {
+            transform: scale(1.05);
+            filter: brightness(1.2);
+        }
+
+        /* ==============================================
+           LOJA DE DEFESAS
+        ============================================== */
+        #shop {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: var(--grid-color);
+            padding: 15px;
+            border-radius: 8px;
+            width: 250px;
+        }
+
+        .shop-item {
+            background: #0f3460;
+            border: 1px solid var(--text);
+            color: white;
+            padding: 10px;
+            cursor: pointer;
+            text-align: left;
+            border-radius: 5px;
+            transition: 0.2s;
+        }
+
+        .shop-item:hover { 
+            background: var(--text); 
+        }
+        
+        .shop-item:disabled { 
+            opacity: 0.5; 
+            cursor: not-allowed; 
+        }
+
+        /* ==============================================
+           LOG DE EVENTOS (CONSOLE)
+        ============================================== */
+        #event-log {
+            width: 300px;
+            height: 400px;
+            background: #000;
+            color: #00ff00;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.8rem;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-y: auto;
+            border: 1px solid #333;
+        }
+
+        .log-entry { 
+            margin-bottom: 5px; 
+            border-bottom: 1px solid #111; 
+        }
+        
+        .log-alert { 
+            color: #ffae00; 
+            font-weight: bold; 
+        }
+        
+        .log-danger { 
+            color: #ff4444; 
+            font-weight: bold; 
+        }
+        
+        .log-success { 
+            color: #00ff00; 
+            font-weight: bold; 
+        }
+
+        /* ==============================================
+           CIDADÃOS (USUÁRIOS DO SISTEMA)
+        ============================================== */
+        .citizen {
+            position: absolute;
+            font-size: 15px;
+            transition: all 0.5s linear;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        @keyframes panic {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            25% { transform: translate(5px, -5px) rotate(15deg); }
+            50% { transform: translate(-5px, 5px) rotate(-15deg); }
+            75% { transform: translate(5px, 5px) rotate(15deg); }
+            100% { transform: translate(0, 0) rotate(0deg); }
+        }
+
+        .panic-mode {
+            animation: panic 0.2s infinite;
+        }
+
+        /* ==============================================
+           TELA DE BOAS-VINDAS
+        ============================================== */
+        #welcome-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10, 10, 25, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            text-align: center;
+        }
+
+        .modal-content {
+            background: var(--grid-color);
+            padding: 40px;
+            border-radius: 15px;
+            border: 2px solid var(--text);
+            max-width: 500px;
+        }
+
+        /* ==============================================
+           PAINEL DE INFORMAÇÕES TÉCNICAS
+        ============================================== */
+        #tech-details {
+            margin-top: 10px;
+            padding: 10px;
+            background: #16213e;
+            border-left: 4px solid var(--text);
+            font-size: 0.9rem;
+            min-height: 80px;
+        }
+
+        /* ==============================================
+           ATAQUES DDoS VISUAIS (CLICÁVEIS)
+        ============================================== */
+        .attack {
+            position: absolute;
+            font-size: 28px;
+            z-index: 20;
+            animation: flicker 0.6s infinite;
+            pointer-events: auto;
+            cursor: crosshair;
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
+            transition: transform 0.1s;
+        }
+
+        .attack:hover {
+            transform: scale(1.3);
+            filter: drop-shadow(0 0 15px red);
+        }
+
+        @keyframes flicker {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        @keyframes explode {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(2); opacity: 0.5; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        .exploding {
+            animation: explode 0.3s forwards;
+        }
+
+        /* ==============================================
+           TELA DE GAME OVER
+        ============================================== */
+        #gameover-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.98);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 150;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .gameover-content {
+            text-align: center;
+            max-width: 600px;
+            padding: 40px;
+        }
+
+        .gameover-title {
+            font-size: 4rem;
+            color: var(--text);
+            text-shadow: 0 0 30px rgba(233, 69, 96, 0.8);
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .gameover-subtitle {
+            font-size: 1.5rem;
+            color: #888;
+            margin-bottom: 30px;
+        }
+
+        .gameover-stats {
+            background: rgba(15, 52, 96, 0.5);
+            border: 1px solid var(--text);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .gameover-stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            font-size: 1.1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .gameover-stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .gameover-stat-label {
+            color: #aaa;
+        }
+
+        .gameover-stat-value {
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .gameover-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        .gameover-button {
+            background: var(--text);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        .gameover-button:hover {
+            background: #ff6b6b;
+            transform: scale(1.05);
+        }
+
+        .gameover-button.secondary {
+            background: #0f3460;
+            border: 1px solid var(--text);
+        }
+
+        .gameover-button.secondary:hover {
+            background: #16213e;
+        }
+
+        /* ==============================================
+           DASHBOARD SIEM (RELATÓRIO DE SEGURANÇA)
+        ============================================== */
+        #siem-dashboard {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .siem-container {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 2px solid var(--text);
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 1200px;
+            width: 100%;
+            box-shadow: 0 0 50px rgba(233, 69, 96, 0.5);
+        }
+
+        .siem-header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid var(--text);
+            padding-bottom: 20px;
+        }
+
+        .siem-header h1 {
+            color: var(--text);
+            font-size: 2.5rem;
+            margin: 0;
+            text-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
+        }
+
+        .siem-header .timestamp {
+            color: #888;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+
+        .siem-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .siem-card {
+            background: rgba(15, 52, 96, 0.6);
+            border: 1px solid rgba(233, 69, 96, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .siem-card h3 {
+            color: var(--text);
+            margin: 0 0 15px 0;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-label {
+            color: #aaa;
+        }
+
+        .stat-value {
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .stat-value.danger {
+            color: #ff4444;
+        }
+
+        .stat-value.success {
+            color: #00ff00;
+        }
+
+        .stat-value.warning {
+            color: #ffae00;
+        }
+
+        .attack-bar {
+            background: rgba(255, 255, 255, 0.1);
+            height: 30px;
+            border-radius: 5px;
+            margin: 10px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .attack-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--text), #ff6b6b);
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            transition: width 1s ease-out;
+        }
+
+        .timeline {
+            max-height: 300px;
+            overflow-y: auto;
+            background: #000;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+        }
+
+        .timeline-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid #222;
+            color: #00ff00;
+        }
+
+        .timeline-entry.danger {
+            color: #ff4444;
+        }
+
+        .timeline-entry.warning {
+            color: #ffae00;
+        }
+
+        .score-big {
+            text-align: center;
+            font-size: 3rem;
+            color: var(--text);
+            margin: 20px 0;
+            text-shadow: 0 0 20px rgba(233, 69, 96, 0.8);
+        }
+
+        .siem-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        .siem-button {
+            background: var(--text);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        .siem-button:hover {
+            background: #ff6b6b;
+            transform: scale(1.05);
+        }
+
+        .siem-button.secondary {
+            background: #0f3460;
+            border: 1px solid var(--text);
+        }
+
+        .siem-button.secondary:hover {
+            background: #16213e;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ==============================================
+     CABEÇALHO
+============================================== -->
+<header>
+    <h1>🏙️ SecCity v1.0</h1>
+    <p>Transforme sua infraestrutura em uma fortaleza!</p>
+</header>
+
+<!-- ==============================================
+     PAINEL DE ESTATÍSTICAS (UI)
+============================================== -->
+<div id="ui-panel">
+    <div class="stat">Moedas: <span id="money">500</span></div>
+    <div class="stat">Segurança: <span id="defense">50</span>%</div>
+    <div class="stat">Uptime: <span id="uptime">100</span>%</div>
+    <div class="stat">Ataques Bloqueados: <span id="blocked">0</span></div>
+</div>
+
+<!-- ==============================================
+     CONTAINER PRINCIPAL DO JOGO
+============================================== -->
+<div id="game-container">
+    <!-- LOJA DE DEFESAS -->
+    <div id="shop">
+        <!-- Tela de boas-vindas -->
+        <div id="welcome-screen">
+            <div class="modal-content">
+                <h2>🏙️ Bem-vindo ao SecCity</h2>
+                <p>Nossos colaboradores estão em pânico. Acalme-os.</p>
+                <p>Sua missão é gerenciar a infraestrutura de TI de uma cidade digital.</p>
+                <p><b>O desafio:</b> Expandir a rede enquanto protege os cidadãos (usuários) de ataques cibernéticos reais.</p>
+                <p><b>💡 Dica:</b> Clique nos ataques (📧🦠💀🌐) para destruí-los antes que atinjam seus servidores!</p>
+                <button class="shop-item" style="width: 100%; text-align: center;" onclick="startGame()">INICIAR OPERAÇÃO</button>
+            </div>
+        </div>
+
+        <!-- Painel de informações técnicas -->
+        <div id="tech-details">
+            <i>Passe o mouse sobre uma tecnologia para ver sua aplicação real.</i>
+        </div>
+
+        <!-- Itens da loja -->
+        <h3>🛒 Central de Defesa</h3>
+        <button class="shop-item" onclick="selectBuilding('firewall')">
+            🔥 Firewall (150g)<br><small>+15 Defesa</small>
+        </button>
+        <button class="shop-item" onclick="selectBuilding('backup')">
+            🏥 Backup (200g)<br><small>Recupera Uptime</small>
+        </button>
+        <button class="shop-item" onclick="selectBuilding('soc')">
+            🚔 SOC (350g)<br><small>+30 Defesa</small>
+        </button>
+        <button class="shop-item" onclick="selectBuilding('school')">
+            🎓 Treinamento (100g)<br><small>Reduz ataques</small>
+        </button>
+    </div>
+
+    <!-- GRID DA CIDADE (8x8) -->
+    <div id="city-grid"></div>
+
+    <!-- LOG DE EVENTOS -->
+    <div>
+        <h3>📡 Logs do Sistema</h3>
+        <div id="event-log">
+            <div class="log-entry">> Sistema inicializado...</div>
+            <div class="log-entry">> Rede desprotegida detectada.</div>
+            <div class="log-entry log-alert">> CLIQUE nos ataques para destruí-los!</div>
+        </div>
+    </div>
+</div>
+
+<!-- ==============================================
+     TELA DE GAME OVER
+============================================== -->
+<div id="gameover-screen">
+    <div class="gameover-content">
+        <div class="gameover-title">💀 GAME OVER</div>
+        <div class="gameover-subtitle">A segurança do sistema colapsou</div>
+        
+        <div class="gameover-stats">
+            <div class="gameover-stat-row">
+                <span class="gameover-stat-label">Tempo de Sobrevivência:</span>
+                <span class="gameover-stat-value" id="go-time">0m 0s</span>
+            </div>
+            <div class="gameover-stat-row">
+                <span class="gameover-stat-label">Ataques Bloqueados:</span>
+                <span class="gameover-stat-value" id="go-blocked">0</span>
+            </div>
+            <div class="gameover-stat-row">
+                <span class="gameover-stat-label">Defesa Final:</span>
+                <span class="gameover-stat-value" id="go-defense">0%</span>
+            </div>
+            <div class="gameover-stat-row">
+                <span class="gameover-stat-label">Moedas Acumuladas:</span>
+                <span class="gameover-stat-value" id="go-money">0</span>
+            </div>
+            <div class="gameover-stat-row">
+                <span class="gameover-stat-label">Score:</span>
+                <span class="gameover-stat-value" style="color: var(--text); font-size: 1.5rem;" id="go-score">0</span>
+            </div>
+        </div>
+
+        <div class="gameover-buttons">
+            <button class="gameover-button" onclick="showSIEMDashboard()">📊 VER RELATÓRIO SIEM</button>
+            <button class="gameover-button secondary" onclick="location.reload()">🔄 TENTAR NOVAMENTE</button>
+        </div>
+    </div>
+</div>
+
+<!-- ==============================================
+     DASHBOARD SIEM (RELATÓRIO DETALHADO)
+============================================== -->
+<div id="siem-dashboard">
+    <div class="siem-container">
+        <!-- Cabeçalho do SIEM -->
+        <div class="siem-header">
+            <h1>🔒 SECURITY INCIDENT & EVENT MANAGEMENT</h1>
+            <div class="timestamp">Relatório de Segurança - <span id="siem-timestamp"></span></div>
+            <div class="score-big">SCORE: <span id="final-score">0</span></div>
+        </div>
+
+        <!-- Grid de estatísticas -->
+        <div class="siem-grid">
+            <!-- Card: Estatísticas Gerais -->
+            <div class="siem-card">
+                <h3>📊 Estatísticas Gerais</h3>
+                <div class="stat-row">
+                    <span class="stat-label">Tempo de Operação:</span>
+                    <span class="stat-value" id="game-duration">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Defesa Final:</span>
+                    <span class="stat-value danger" id="final-defense">0%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Defesa Máxima:</span>
+                    <span class="stat-value success" id="max-defense">0%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Defesa Mínima:</span>
+                    <span class="stat-value warning" id="min-defense">0%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Uptime Final:</span>
+                    <span class="stat-value" id="final-uptime">0%</span>
+                </div>
+            </div>
+
+            <!-- Card: Análise de Ataques -->
+            <div class="siem-card">
+                <h3>🎯 Análise de Ataques</h3>
+                <div class="stat-row">
+                    <span class="stat-label">Total de Ataques:</span>
+                    <span class="stat-value danger" id="total-attacks">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Ataques Bem-Sucedidos:</span>
+                    <span class="stat-value danger" id="attacks-success">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Bloqueios Automáticos:</span>
+                    <span class="stat-value success" id="auto-blocks">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Bloqueios Manuais:</span>
+                    <span class="stat-value success" id="manual-blocks">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Taxa de Bloqueio:</span>
+                    <span class="stat-value success" id="block-rate">0%</span>
+                </div>
+            </div>
+
+            <!-- Card: Performance Financeira -->
+            <div class="siem-card">
+                <h3>💰 Performance Financeira</h3>
+                <div class="stat-row">
+                    <span class="stat-label">Moedas Finais:</span>
+                    <span class="stat-value success" id="final-money">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Total Gasto:</span>
+                    <span class="stat-value warning" id="total-spent">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Estruturas Construídas:</span>
+                    <span class="stat-value" id="buildings-built">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Receita por Segundo:</span>
+                    <span class="stat-value" id="income-rate">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card: Distribuição de Ataques por Tipo -->
+        <div class="siem-card">
+            <h3>🦠 Distribuição de Ataques por Tipo</h3>
+            
+            <!-- Phishing -->
+            <div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span>📧 Phishing</span>
+                    <span id="phishing-count">0</span>
+                </div>
+                <div class="attack-bar">
+                    <div class="attack-bar-fill" id="phishing-bar" style="width: 0%">0%</div>
+                </div>
+            </div>
+
+            <!-- Malware -->
+            <div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span>🦠 Malware</span>
+                    <span id="malware-count">0</span>
+                </div>
+                <div class="attack-bar">
+                    <div class="attack-bar-fill" id="malware-bar" style="width: 0%">0%</div>
+                </div>
+            </div>
+
+            <!-- Ransomware -->
+            <div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span>💀 Ransomware</span>
+                    <span id="ransomware-count">0</span>
+                </div>
+                <div class="attack-bar">
+                    <div class="attack-bar-fill" id="ransomware-bar" style="width: 0%">0%</div>
+                </div>
+            </div>
+
+            <!-- DDoS -->
+            <div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span>🌐 DDoS</span>
+                    <span id="ddos-count">0</span>
+                </div>
+                <div class="attack-bar">
+                    <div class="attack-bar-fill" id="ddos-bar" style="width: 0%">0%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card: Timeline de Eventos -->
+        <div class="siem-card">
+            <h3>📝 Timeline de Eventos Críticos</h3>
+            <div class="timeline" id="event-timeline">
+                <div class="timeline-entry">Iniciando análise...</div>
+            </div>
+        </div>
+
+        <!-- Botões de ação -->
+        <div class="siem-actions">
+            <button class="siem-button" onclick="location.reload()">🔄 NOVA OPERAÇÃO</button>
+            <button class="siem-button secondary" onclick="downloadReport()">📄 BAIXAR RELATÓRIO</button>
+        </div>
+    </div>
+</div>
+
+<!-- ==============================================
+     IMPORTAÇÃO DO JAVASCRIPT
+============================================== -->
+<script src="secsims.js"></script>
+
+</body>
+</html>
